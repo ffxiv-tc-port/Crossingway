@@ -1,0 +1,61 @@
+<Project Sdk="Dalamud.NET.Sdk/12.0.2">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0-windows</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<Configurations>Release;Debug</Configurations>
+		<Platforms>x64</Platforms>
+		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<LangVersion>latestmajor</LangVersion>
+		<Version>1.7.1.0</Version>
+		<OutputPath>..\out</OutputPath>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<DalamudLibPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+		<DalamudLibPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(HOME)/.xlcore/dalamud/Hooks/dev/</DalamudLibPath>
+		<DalamudLibPath Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(HOME)/Library/Application Support/XIVTheCalamity/Dalamud/Hooks/dev/</DalamudLibPath>
+		<DalamudLibPath Condition="$(DALAMUD_HOME) != ''">$(DALAMUD_HOME)/</DalamudLibPath>
+	</PropertyGroup>
+    
+	<ItemGroup>
+        <Reference Include="TerraFX.Interop.Windows">
+            <HintPath>$(DalamudLibPath)TerraFX.Interop.Windows.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="SharpDX.Direct3D11">
+            <HintPath>$(DalamudLibPath)SharpDX.Direct3D11.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="SharpDX">
+            <HintPath>$(DalamudLibPath)SharpDX.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+	</ItemGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="SharedMemory" Version="2.3.2" />
+		<PackageReference Update="DalamudPackager" Version="13.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Crossingway.Common\Crossingway.Common.csproj" />
+		<ProjectReference Include="..\Crossingway.Renderer\Crossingway.Renderer.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+	
+	<ItemGroup>
+		<Content Include="Crossingway.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="images\icon.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+        <Content Include="images\dead.png">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+	</ItemGroup>
+	
+</Project>

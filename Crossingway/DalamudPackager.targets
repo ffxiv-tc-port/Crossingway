@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+	<Target Name="PrepareOutput" AfterTargets="Build">
+		<RemoveDir Directories="$(OutputPath)\locales"/>
+		<Copy SourceFiles="$(OutputPath)\Crossingway.Common.dll" DestinationFolder="$(OutputPath)\renderer"/>
+		<Copy SourceFiles="$(OutputPath)\Crossingway.Common.pdb" DestinationFolder="$(OutputPath)\renderer"/>
+		<Copy SourceFiles="$(OutputPath)\SharedMemory.dll" DestinationFolder="$(OutputPath)\renderer"/>
+		<Copy SourceFiles="$(OutputPath)\FlatSharp.Runtime.dll" DestinationFolder="$(OutputPath)\renderer"/>
+		<Copy SourceFiles="$(OutputPath)\images\icon.png" DestinationFolder="$(OutputPath)"/>
+        <Copy SourceFiles="$(OutputPath)\images\dead.png" DestinationFolder="$(OutputPath)"/>
+		<Move SourceFiles="$(OutputPath)\Crossingway.Renderer.dll" DestinationFolder="$(OutputPath)\renderer"/>
+		<Move SourceFiles="$(OutputPath)\Crossingway.Renderer.exe" DestinationFolder="$(OutputPath)\renderer"/>
+		<Move SourceFiles="$(OutputPath)\Crossingway.Renderer.pdb" DestinationFolder="$(OutputPath)\renderer"/>
+		<Move SourceFiles="$(OutputPath)\Crossingway.Renderer.runtimeconfig.json" DestinationFolder="$(OutputPath)\renderer"/>
+		<Move SourceFiles="$(OutputPath)\CefSharp.OffScreen.dll" DestinationFolder="$(OutputPath)\renderer"/>
+		<Delete Files="$(OutputPath)\Crossingway.Renderer.deps.json"/>
+		<Delete Files="$(OutputPath)\Crossingway.Renderer.exe.bak"/>
+	</Target>
+	<Target Name="PackagePlugin" AfterTargets="PrepareOutput" Condition="'$(Configuration)' == 'Release'">
+		<DalamudPackager
+				ProjectDir="$(ProjectDir)"
+				OutputPath="$(OutputPath)"
+				AssemblyName="$(AssemblyName)"
+				VersionComponents="3"
+				MakeZip="true"/>
+	</Target>
+</Project>

@@ -1,0 +1,19 @@
+﻿{
+    "Name": "Crossingway",
+    "Author": "XIVTheCalamity",
+    "Punchline": "Browser overlays rendered in-game.",
+    "Description": "Renders browser overlays in-game for FFXIV Traditional Chinese server (API 12 / .NET 9).\nUse the settings button below or the '/cw config' command to configure.\nFork of Browsingway by Styr1x.",
+    "RepoUrl": "https://github.com/XIVTheCalamity/Crossingway",
+    "Tags": [
+        "framework",
+        "browser",
+        "inlay",
+        "overlay",
+        "chromium",
+        "act",
+        "youtube",
+        "website",
+        "video"
+    ],
+    "Changelog": "- Fork of Browsingway for Traditional Chinese server\n- API 12 / .NET 9\n- SharedMemory IPC fallback for DXMT\n"
+}
