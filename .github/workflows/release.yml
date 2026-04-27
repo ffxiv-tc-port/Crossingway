@@ -50,6 +50,9 @@ jobs:
       - name: Build Release
         run: dotnet build -c Release -p:Platform=x64 Crossingway.sln
 
+      - name: Debug - list out directory
+        run: find out -type f | sort
+
       - name: Locate and rename zip
         id: zip
         run: |
