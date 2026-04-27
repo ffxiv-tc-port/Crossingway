@@ -27,7 +27,10 @@ jobs:
       - name: Download Dalamud
         run: |
           mkdir -p $HOME/.xlcore/dalamud/Hooks/dev
-          wget https://goatcorp.github.io/dalamud-distrib/latest.zip -O /tmp/dalamud.zip
+          DALAMUD_URL=$(curl -s https://api.github.com/repos/PlusoneChiang/Dalamud/releases/latest \
+            | jq -r '.assets[0].browser_download_url')
+          echo "Downloading Dalamud from: $DALAMUD_URL"
+          wget "$DALAMUD_URL" -O /tmp/dalamud.zip
           unzip -o /tmp/dalamud.zip -d $HOME/.xlcore/dalamud/Hooks/dev
 
       - name: Extract version from tag
