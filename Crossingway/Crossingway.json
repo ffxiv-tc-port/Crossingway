@@ -3,7 +3,7 @@
     "Author": "XIVTheCalamity",
     "Punchline": "Browser overlays rendered in-game.",
     "Description": "Renders browser overlays in-game for FFXIV Traditional Chinese server (API 12 / .NET 9).\nUse the settings button below or the '/cw config' command to configure.\nFork of Browsingway by Styr1x.",
-    "RepoUrl": "https://github.com/XIVTheCalamity/Crossingway",
+    "RepoUrl": "https://github.com/PlusoneChiang/Crossingway",
     "Tags": [
         "framework",
         "browser",
@@ -15,5 +15,5 @@
         "website",
         "video"
     ],
-    "Changelog": "- Fork of Browsingway for Traditional Chinese server\n- API 12 / .NET 9\n- SharedMemory IPC fallback for DXMT\n"
+    "Changelog": "- Fix buffer overflow on window resize\n- Fix crash on dropdown/popup interaction (shared memory mode)\n- Fix double DPI scaling of popup position\n- Add popup overlay for external links\n- Fix IINACT EndCombat NullReferenceException\n- Shared memory IPC fallback for DXMT (macOS/Wine)\n"
 }

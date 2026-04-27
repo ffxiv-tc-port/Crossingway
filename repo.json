@@ -1,0 +1,36 @@
+[
+  {
+    "Author": "PlusoneChiang",
+    "Name": "Crossingway",
+    "InternalName": "Crossingway",
+    "AssemblyVersion": "1.0.0.0",
+    "TestingAssemblyVersion": "1.0.0.0",
+    "Description": "Renders browser overlays in-game for FFXIV Traditional Chinese server (API 12 / .NET 9).\nUse the settings button below or the '/cw config' command to configure.\nFork of Browsingway by Styr1x.",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/PlusoneChiang/Crossingway",
+    "Tags": [
+      "framework",
+      "browser",
+      "inlay",
+      "overlay",
+      "chromium",
+      "act",
+      "youtube",
+      "website",
+      "video"
+    ],
+    "DalamudApiLevel": 12,
+    "LoadRequiredState": 0,
+    "LoadSync": false,
+    "CanUnloadAsync": false,
+    "LoadPriority": 0,
+    "IconUrl": "https://raw.githubusercontent.com/PlusoneChiang/Crossingway/main/out/icon.png",
+    "Punchline": "Browser overlays rendered in-game.",
+    "Changelog": "- Fix buffer overflow on window resize\n- Fix crash on dropdown/popup interaction (shared memory mode)\n- Fix double DPI scaling of popup position\n- Add popup overlay for external links\n- Shared memory IPC fallback for DXMT (macOS/Wine)\n",
+    "IsHide": "False",
+    "IsTestingExclusive": "False",
+    "DownloadLinkInstall": "https://github.com/PlusoneChiang/Crossingway/releases/download/v1.0.0.0/Crossingway.zip",
+    "DownloadLinkTesting": "https://github.com/PlusoneChiang/Crossingway/releases/download/v1.0.0.0/Crossingway.zip",
+    "DownloadLinkUpdate": "https://github.com/PlusoneChiang/Crossingway/releases/download/v1.0.0.0/Crossingway.zip"
+  }
+]
