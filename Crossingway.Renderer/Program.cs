@@ -168,6 +168,7 @@ internal static class Program
 				_ = _rpc.SetCursor(new SetCursorMessage() {Guid = msg.Guid, Cursor = cursor});
 			};
 
+			overlay.OpenPopup += (url, w, h) => _ = _rpc.OpenPopup(guid, url, w, h);
 			_ = SendTextureUpdate(guid, renderHandler);
 		}
 	}

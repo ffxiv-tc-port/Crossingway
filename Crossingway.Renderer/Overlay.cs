@@ -21,6 +21,8 @@ internal class Overlay : IDisposable
 	private bool _muted;
 	private string _customCss;
 
+	public event Action<string, int, int>? OpenPopup;
+
 	public Overlay(string id, string url, float zoom, bool muted, int framerate, string customCss,
 		TextureRenderHandler renderHandler)
 	{
@@ -56,6 +58,7 @@ internal class Overlay : IDisposable
 		_browser = new ChromiumWebBrowser(_url, automaticallyCreateBrowser: false, requestContext: rc);
 		_browser.RenderHandler = RenderHandler;
 		_browser.MenuHandler = new CefMenuHandler();
+		_browser.LifeSpanHandler = new CefLifeSpanHandler(this);
 		Rect size = RenderHandler.GetViewRect();
 
 		// General _browser config
@@ -214,5 +217,25 @@ internal class Overlay : IDisposable
 		}
 
 		return (5.46149645 * Math.Log(_zoom)) - 25.12;
+	}
+
+	private class CefLifeSpanHandler(Overlay overlay) : ILifeSpanHandler
+	{
+		public bool OnBeforePopup(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame,
+			string targetUrl, string targetFrameName, WindowOpenDisposition targetDisposition,
+			bool userGesture, IPopupFeatures popupFeatures, IWindowInfo windowInfo,
+			IBrowserSettings browserSettings, ref bool noJavascriptAccess, out IWebBrowser newBrowser)
+		{
+			newBrowser = null!;
+			if (!string.IsNullOrEmpty(targetUrl))
+			{
+				overlay.OpenPopup?.Invoke(targetUrl, popupFeatures.Width ?? 0, popupFeatures.Height ?? 0);
+			}
+			return true; // cancel popup creation in CEF
+		}
+
+		public void OnAfterCreated(IWebBrowser chromiumWebBrowser, IBrowser browser) { }
+		public bool DoClose(IWebBrowser chromiumWebBrowser, IBrowser browser) => false;
+		public void OnBeforeClose(IWebBrowser chromiumWebBrowser, IBrowser browser) { }
 	}
 }

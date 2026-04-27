@@ -37,6 +37,20 @@ public class RendererRpc(string name) : IpcBase(name)
 		await SendCall(new RpcCall() { SetCursor = msg });
 	}
 
+	public async Task OpenPopup(Guid parentGuid, string url, int width, int height)
+	{
+		await SendCall(new RpcCall()
+		{
+			OpenPopup = new OpenPopupMessage()
+			{
+				ParentGuid = parentGuid.ToByteArray(),
+				Url = url,
+				Width = width,
+				Height = height
+			}
+		});
+	}
+
 	protected override void HandleCall(RpcCall call)
 	{
 		switch (call)

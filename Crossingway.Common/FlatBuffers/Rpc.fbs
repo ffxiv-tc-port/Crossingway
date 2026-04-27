@@ -22,4 +22,5 @@ table RpcCall(fs_serializer) {
     RendererReady: RendererReadyMessage;
     UpdateTexture: UpdateTextureMessage;
     SetCursor: SetCursorMessage;
+    OpenPopup: OpenPopupMessage;
 }

@@ -129,6 +129,41 @@ public class Plugin : IDalamudPlugin
 				}
 			});
 		};
+		_renderProcess.Rpc.OpenPopup += msg =>
+		{
+			Services.Framework.RunOnFrameworkThread(() =>
+			{
+				Guid parentGuid = new(msg.ParentGuid.Span);
+				// Find parent overlay to inherit cache name (so localStorage/cookies are shared)
+				Overlay? parent = _overlays.Values.FirstOrDefault(o => o.RenderGuid == parentGuid);
+				string cacheName = parent?.ConfigName ?? "popup";
+
+				var popupConfig = new InlayConfiguration
+				{
+					Guid = Guid.NewGuid(),
+					Name = cacheName,
+					Url = msg.Url,
+					Framerate = 60,
+					Zoom = 100f,
+					Opacity = 100f,
+					CustomCss = ""
+				};
+
+				var popupOverlay = new Overlay(_renderProcess, popupConfig, _pluginDir,
+					isPopup: true, popupWidth: msg.Width, popupHeight: msg.Height);
+
+				popupOverlay.PopupClosed += (_, _) =>
+				{
+					Services.Framework.RunOnFrameworkThread(() =>
+					{
+						if (_overlays.Remove(popupConfig.Guid, out var removed))
+							removed.Dispose();
+					});
+				};
+
+				_overlays.TryAdd(popupConfig.Guid, popupOverlay);
+			});
+		};
 		_renderProcess.Start();
 
 		// Prep settings

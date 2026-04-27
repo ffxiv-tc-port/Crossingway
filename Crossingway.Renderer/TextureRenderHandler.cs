@@ -46,6 +46,8 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 	private string? _sharedBufferName;
 	private int _sharedWidth;
 	private int _sharedHeight;
+	// 記錄 buffer 的實際容量（byte），用於 OnPaint 時的 bounds check
+	private int _sharedBufferCapacity;
 	private byte[] _popupCpuBuffer = Array.Empty<byte>();
 	private int _popupCpuWidth;
 	private int _popupCpuHeight;
@@ -55,10 +57,16 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		_useSharedMemory = useSharedMemory;
 		if (useSharedMemory)
 		{
-			_sharedWidth = size.Width;
-			_sharedHeight = size.Height;
-			_sharedBufferName = $"cw_{overlayGuid:N}";
-			_sharedBuffer = new CrossingwaySharedBuffer(_sharedBufferName, size.Width * size.Height * _bytesPerPixel);
+			// 計算 DPI 對齊後的實體像素大小（CEF 實際渲染尺寸）
+			// GetViewRect 使用 Ceiling(w/scale)，CEF 實際渲染為 Ceiling(w/scale)*scale
+			// 若 buffer 只分配 w*h，會導致溢位，因此分配 DPI 對齊後的大小
+			var (physW, physH) = ComputePhysicalSize(size);
+			_sharedWidth = physW;
+			_sharedHeight = physH;
+			_sharedBufferCapacity = physW * physH * _bytesPerPixel;
+			// 每次使用唯一名稱，避免插件端仍持有舊 MMF 句柄時，CreateNew 丟出 "File already exists"
+			_sharedBufferName = $"cw_{overlayGuid:N}_{Guid.NewGuid():N}";
+			_sharedBuffer = new CrossingwaySharedBuffer(_sharedBufferName, _sharedBufferCapacity);
 		}
 		else
 		{
@@ -262,6 +270,10 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 	{
 		_popupRect = DpiScaling.ScaleScreenRect(rect);
 
+		// Shared memory mode: popup compositing is handled by the CPU path (CpuCompositeToSharedBuffer).
+		// No D3D11 popup texture is needed; just recording _popupRect is sufficient.
+		if (_useSharedMemory) return;
+
 		// I'm really not sure if this happens. If it does, frequently - will probably need 2x shared textures and some jazz.
 		D3D11_TEXTURE2D_DESC texDesc;
 		_sharedTexture->GetDesc(&texDesc);
@@ -329,9 +341,15 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 			if (_useSharedMemory)
 			{
 				_sharedBuffer?.Dispose();
-				_sharedWidth = size.Width;
-				_sharedHeight = size.Height;
-				_sharedBuffer = new CrossingwaySharedBuffer(_sharedBufferName!, size.Width * size.Height * _bytesPerPixel);
+				// 立即設為 null，避免建立新 buffer 失敗時仍存取已 Dispose 的舊物件
+				_sharedBuffer = null;
+				var (physW, physH) = ComputePhysicalSize(size);
+				_sharedWidth = physW;
+				_sharedHeight = physH;
+				_sharedBufferCapacity = physW * physH * _bytesPerPixel;
+				// 每次 Resize 使用新的唯一名稱，避免與插件端仍持有的舊 MMF 句柄衝突
+				_sharedBufferName = $"cw_{Guid.NewGuid():N}";
+				_sharedBuffer = new CrossingwaySharedBuffer(_sharedBufferName!, _sharedBufferCapacity);
 				return;
 			}
 
@@ -416,6 +434,11 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 		int frameSize = viewWidth * viewHeight * _bytesPerPixel;
 
+		// 防止緩衝區溢位：若 CEF 傳來的 frame 超出 buffer 容量，略過此幀
+		// 這在 Resize 後的競態條件下會發生（CEF 尚未採用新尺寸，仍以舊尺寸 OnPaint）
+		if (frameSize > _sharedBufferCapacity)
+			return;
+
 		// Copy view into shared buffer
 		var frameBytes = new byte[frameSize];
 		fixed (void* dst = frameBytes)
@@ -424,16 +447,18 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		// Overlay popup if visible
 		if (_popupVisible && _popupCpuWidth > 0 && _popupCpuHeight > 0 && _popupCpuBuffer.Length >= _popupCpuWidth * _popupCpuHeight * _bytesPerPixel)
 		{
-			Point popupPos = DpiScaling.ScaleScreenPoint(_popupRect.X, _popupRect.Y);
+			// _popupRect is already in physical pixels (set by ScaleScreenRect in OnPopupSize)
+			int popupX = _popupRect.X;
+			int popupY = _popupRect.Y;
 			int viewStride = viewWidth * _bytesPerPixel;
 			int popupStride = _popupCpuWidth * _bytesPerPixel;
 			for (int row = 0; row < _popupCpuHeight; row++)
 			{
-				int dstY = popupPos.Y + row;
+				int dstY = popupY + row;
 				if (dstY < 0 || dstY >= viewHeight) continue;
 				int srcOffset = row * popupStride;
-				int dstOffset = dstY * viewStride + popupPos.X * _bytesPerPixel;
-				int copyBytes = Math.Min(popupStride, (viewWidth - popupPos.X) * _bytesPerPixel);
+				int dstOffset = dstY * viewStride + popupX * _bytesPerPixel;
+				int copyBytes = Math.Min(popupStride, (viewWidth - popupX) * _bytesPerPixel);
 				if (copyBytes <= 0) continue;
 				Array.Copy(_popupCpuBuffer, srcOffset, frameBytes, dstOffset, copyBytes);
 			}
@@ -557,5 +582,20 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		// Unmapped cursor, log and default
 		Console.WriteLine($"Switching to unmapped cursor type {cursor}.");
 		return Cursor.Default;
+	}
+
+	/// <summary>
+	/// 計算 CEF 實際渲染的實體像素尺寸。
+	/// GetViewRect 回傳 ceil(w/scale) × ceil(h/scale) 的邏輯像素，
+	/// CEF 再乘以 deviceScale 得到實體像素，結果可能大於原始 w × h，
+	/// 因此 buffer 必須以此實體像素大小分配，避免緩衝區溢位。
+	/// </summary>
+	private static (int Width, int Height) ComputePhysicalSize(Size logicalSize)
+	{
+		float scale = DpiScaling.GetDeviceScale();
+		if (scale <= 0) scale = 1.0f;
+		int physW = (int)(Math.Ceiling(logicalSize.Width / scale) * scale);
+		int physH = (int)(Math.Ceiling(logicalSize.Height / scale) * scale);
+		return (Math.Max(1, physW), Math.Max(1, physH));
 	}
 }

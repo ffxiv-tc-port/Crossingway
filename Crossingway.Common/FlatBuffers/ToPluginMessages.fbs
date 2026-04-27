@@ -20,3 +20,10 @@ table SetCursorMessage (fs_serializer) {
     Cursor: Cursor;
     Guid: [ubyte] (required);
 }
+
+table OpenPopupMessage (fs_serializer) {
+    ParentGuid : [ubyte] (required);
+    Url        : string (required);
+    Width      : int;
+    Height     : int;
+}

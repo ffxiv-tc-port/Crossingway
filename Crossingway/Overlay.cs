@@ -26,7 +26,13 @@ internal class Overlay : IDisposable
 	private long _timeLastInCombat;
 	private ISharedImmediateTexture? _texErrorIcon;
 
-	public Overlay(RenderProcess renderProcess, InlayConfiguration overlayConfig, string pluginDir)
+	private readonly bool _isPopup;
+	private Vector2 _popupInitialSize;
+
+	public event EventHandler? PopupClosed;
+	public string ConfigName => _overlayConfig.Name;
+
+	public Overlay(RenderProcess renderProcess, InlayConfiguration overlayConfig, string pluginDir, bool isPopup = false, int popupWidth = 0, int popupHeight = 0)
 	{
 		_renderProcess = renderProcess;
 		// TODO: handle that the correct way
@@ -38,6 +44,11 @@ internal class Overlay : IDisposable
 
 		_overlayConfig = overlayConfig;
 		_texErrorIcon = Services.TextureProvider.GetFromFile(Path.Combine(pluginDir, "dead.png"));
+		_isPopup = isPopup;
+		_popupInitialSize = new Vector2(
+			popupWidth > 0 ? popupWidth : 800,
+			popupHeight > 0 ? popupHeight : 600
+		);
 	}
 
 	public Guid RenderGuid => _overlayConfig.Guid;
@@ -120,25 +131,45 @@ internal class Overlay : IDisposable
 			return;
 		}
 
-		ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
-		ImGui.Begin($"{_overlayConfig.Name}###{_overlayConfig.Guid}", GetWindowFlags());
-
-		if (_overlayConfig.Fullscreen)
+		if (_isPopup)
 		{
-			var screen = ImGui.GetMainViewport();
+			// Set initial size only on the first frame (before _size is known)
+			if (_size == Vector2.Zero)
+				ImGui.SetNextWindowSize(_popupInitialSize, ImGuiCond.Always);
 
-			// ImGui always leaves a 1px transparent border around the window, so we need to account for that.
-			var fsPos = new Vector2(screen.WorkPos.X - 1, screen.WorkPos.Y - 1);
-			var fsSize = new Vector2(screen.Size.X + 2 - fsPos.X, screen.Size.Y + 2 - fsPos.Y);
+			bool open = true;
+			ImGui.Begin($"{_overlayConfig.Name}###{_overlayConfig.Guid}", ref open,
+				ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-			if (ImGui.GetWindowPos() != fsPos)
+			if (!open)
 			{
-				ImGui.SetWindowPos(fsPos, ImGuiCond.Always);
+				ImGui.End();
+				PopupClosed?.Invoke(this, EventArgs.Empty);
+				return;
 			}
+		}
+		else
+		{
+			ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
+			ImGui.Begin($"{_overlayConfig.Name}###{_overlayConfig.Guid}", GetWindowFlags());
 
-			if (_size.X != fsSize.X || _size.Y != fsSize.Y)
+			if (_overlayConfig.Fullscreen)
 			{
-				ImGui.SetWindowSize(fsSize, ImGuiCond.Always);
+				var screen = ImGui.GetMainViewport();
+
+				// ImGui always leaves a 1px transparent border around the window, so we need to account for that.
+				var fsPos = new Vector2(screen.WorkPos.X - 1, screen.WorkPos.Y - 1);
+				var fsSize = new Vector2(screen.Size.X + 2 - fsPos.X, screen.Size.Y + 2 - fsPos.Y);
+
+				if (ImGui.GetWindowPos() != fsPos)
+				{
+					ImGui.SetWindowPos(fsPos, ImGuiCond.Always);
+				}
+
+				if (_size.X != fsSize.X || _size.Y != fsSize.Y)
+				{
+					ImGui.SetWindowSize(fsSize, ImGuiCond.Always);
+				}
 			}
 		}
 
