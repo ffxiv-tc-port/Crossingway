@@ -50,14 +50,11 @@ jobs:
       - name: Build Release
         run: dotnet build -c Release -p:Platform=x64 Crossingway.sln
 
-      - name: Debug - list out directory
-        run: find out -type f | sort
-
       - name: Locate and rename zip
         id: zip
         run: |
-          # DalamudPackager outputs to out/Crossingway_v{3-ver}/Crossingway/latest.zip
-          SRC=$(find out -path "*/Crossingway_v*/Crossingway/latest.zip" | sort | tail -1)
+          # DalamudPackager outputs to out/Crossingway/latest.zip
+          SRC="out/Crossingway/latest.zip"
           echo "Found: $SRC"
           cp "$SRC" out/Crossingway.zip
           echo "path=out/Crossingway.zip" >> $GITHUB_OUTPUT
