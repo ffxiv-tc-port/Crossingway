@@ -53,7 +53,8 @@ jobs:
       - name: Locate and rename zip
         id: zip
         run: |
-          SRC=$(find out -name "Crossingway_v*.zip" | sort | tail -1)
+          # DalamudPackager outputs to out/Crossingway_v{3-ver}/Crossingway/latest.zip
+          SRC=$(find out -path "*/Crossingway_v*/Crossingway/latest.zip" | sort | tail -1)
           echo "Found: $SRC"
           cp "$SRC" out/Crossingway.zip
           echo "path=out/Crossingway.zip" >> $GITHUB_OUTPUT
