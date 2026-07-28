@@ -64,7 +64,7 @@ internal class Settings : IDisposable
 		// Ensure there's enough arguments
 		if (args.Length < 2 || (args[1] != "reload" && args.Length < 3))
 		{
-			Services.Chat.PrintError("Invalid overlay command. Supported syntax: '[overlayCommandName] [setting] [value]'");
+			Services.Chat.PrintError("Invalid overlay command. Supported syntax: '[overlayCommandName] [setting] [value]'".Loc());
 			return;
 		}
 
@@ -73,7 +73,7 @@ internal class Settings : IDisposable
 		if (targetConfig == null)
 		{
 			Services.Chat.PrintError(
-				$"Unknown overlay '{args[0]}'.");
+				"Unknown overlay '??'.".Loc(args[0]));
 			return;
 		}
 
@@ -114,7 +114,7 @@ internal class Settings : IDisposable
 
 			default:
 				Services.Chat.PrintError(
-					$"Unknown setting '{args[1]}. Valid settings are: url,hidden,locked,fullscreen,clickthrough,typethrough,muted,disabled,act.");
+					"Unknown setting '??. Valid settings are: url,hidden,locked,fullscreen,clickthrough,typethrough,muted,disabled,act.".Loc(args[1]));
 				return;
 		}
 
@@ -141,7 +141,7 @@ internal class Settings : IDisposable
 				break;
 			default:
 				Services.Chat.PrintError(
-					$"Unknown boolean value '{value}. Valid values are: on,off,toggle.");
+					"Unknown boolean value '??. Valid values are: on,off,toggle.".Loc(value));
 				break;
 		}
 	}
@@ -232,7 +232,9 @@ internal class Settings : IDisposable
 		                               | ImGuiWindowFlags.NoScrollbar
 		                               | ImGuiWindowFlags.NoScrollWithMouse
 		                               | ImGuiWindowFlags.NoCollapse;
-		ImGui.Begin("Crossingway Settings", ref _open, windowFlags);
+		// ###id keeps the ImGui window identity (and therefore its saved position/size)
+		// stable regardless of the displayed language.
+		ImGui.Begin("Crossingway Settings".Loc() + "###Crossingway Settings", ref _open, windowFlags);
 
 		RenderPaneSelector();
 
@@ -266,7 +268,7 @@ internal class Settings : IDisposable
 		ImGui.BeginChild("panes", new Vector2(selectorWidth, -ImGui.GetFrameHeightWithSpacing()), true);
 
 		// General settings
-		if (ImGui.Selectable("General", _selectedOverlay == null))
+		if (ImGui.Selectable("General".Loc() + "###General", _selectedOverlay == null))
 		{
 			_selectedOverlay = null;
 		}
@@ -274,7 +276,7 @@ internal class Settings : IDisposable
 		// Overlay selector list
 		ImGui.Dummy(new Vector2(0, 5));
 		ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
-		ImGui.Text("- Overlays -");
+		ImGui.Text("- Overlays -".Loc());
 		ImGui.PopStyleVar();
 		foreach (InlayConfiguration? overlayConfig in Config?.Inlays!)
 		{
@@ -323,19 +325,21 @@ internal class Settings : IDisposable
 	{
 		bool dirty = false;
 
-		ImGui.Text("Select an overlay on the left to edit its settings.");
+		ImGui.Text("Select an overlay on the left to edit its settings.".Loc());
 
-		if (ImGui.CollapsingHeader("Command Help", ImGuiTreeNodeFlags.DefaultOpen))
+		if (ImGui.CollapsingHeader("Command Help".Loc() + "###Command Help", ImGuiTreeNodeFlags.DefaultOpen))
 		{
 			// TODO: If this ever gets more than a few options, should probably colocate help with the defintion. Attributes?
+			// The command tokens themselves (/cw config, url/disabled/muted/..., on/off/toggle)
+			// are parsed from chat input verbatim - they must stay English, only the prose is localized.
 			ImGui.Text("/cw config");
-			ImGui.Text("Open this configuration window.");
+			ImGui.Text("Open this configuration window.".Loc());
 			ImGui.Dummy(new Vector2(0, 5));
 			ImGui.Text("/cw overlay [overlayCommandName] [setting] [value]");
 			ImGui.TextWrapped(
-				"Change a setting for an overlay.\n" +
-				"\toverlayCommandName: The overlay to edit. Use the 'Command Name' shown in its config.\n" +
-				"\tsetting: Value to change. Accepted settings are:\n" +
+				"Change a setting for an overlay.".Loc() + "\n" +
+				"\t" + "overlayCommandName: The overlay to edit. Use the 'Command Name' shown in its config.".Loc() + "\n" +
+				"\t" + "setting: Value to change. Accepted settings are:".Loc() + "\n" +
 				"\t\turl: string\n" +
 				"\t\tdisabled: boolean\n" +
 				"\t\tmuted: boolean\n" +
@@ -346,8 +350,8 @@ internal class Settings : IDisposable
 				"\t\tclickthrough: boolean\n" +
 				"\t\tfullscreen: boolean\n" +
 				"\t\treload: -\n" +
-				"\tvalue: Value to set for the setting. Accepted values are:\n" +
-				"\t\tstring: any string value\n\t\tboolean: on, off, toggle");
+				"\t" + "value: Value to set for the setting. Accepted values are:".Loc() + "\n" +
+				"\t\t" + "string: any string value".Loc() + "\n\t\t" + "boolean: on, off, toggle".Loc());
 		}
 
 		return dirty;
@@ -359,17 +363,18 @@ internal class Settings : IDisposable
 
 		ImGui.PushID(overlayConfig.Guid.ToString());
 
-		dirty |= ImGui.InputText("Name", ref overlayConfig.Name, 100);
+		dirty |= ImGui.InputText("Name".Loc() + "###Name", ref overlayConfig.Name, 100);
 
 		ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
 		string? commandName = GetOverlayCommandName(overlayConfig);
-		ImGui.InputText("Command Name", ref commandName, 100);
+		ImGui.InputText("Command Name".Loc() + "###Command Name", ref commandName, 100);
 		ImGui.PopStyleVar();
 
+		// "URL" left untranslated on purpose: it is the raw address the user types in.
 		dirty |= ImGui.InputText("URL", ref overlayConfig.Url, 1000);
 		if (ImGui.IsItemDeactivatedAfterEdit()) { NavigateOverlay(overlayConfig); }
 
-		if (ImGui.InputFloat("Zoom", ref overlayConfig.Zoom, 1f, 10f, "%.0f%%"))
+		if (ImGui.InputFloat("Zoom".Loc() + "###Zoom", ref overlayConfig.Zoom, 1f, 10f, "%.0f%%"))
 		{
 			// clamp to allowed range 
 			if (overlayConfig.Zoom < 10f)
@@ -387,7 +392,7 @@ internal class Settings : IDisposable
 			UpdateZoomOverlay(overlayConfig);
 		}
 
-		if (ImGui.InputFloat("Opacity", ref overlayConfig.Opacity, 1f, 10f, "%.0f%%"))
+		if (ImGui.InputFloat("Opacity".Loc() + "###Opacity", ref overlayConfig.Opacity, 1f, 10f, "%.0f%%"))
 		{
 			// clamp to allowed range 
 			if (overlayConfig.Opacity < 10f)
@@ -402,7 +407,7 @@ internal class Settings : IDisposable
 			dirty = true;
 		}
 
-		if (ImGui.InputInt("Framerate", ref overlayConfig.Framerate, 1, 10))
+		if (ImGui.InputInt("Framerate".Loc() + "###Framerate", ref overlayConfig.Framerate, 1, 10))
 		{
 			// clamp to allowed range 
 			if (overlayConfig.Framerate < 1)
@@ -425,7 +430,7 @@ internal class Settings : IDisposable
 		ImGui.SetNextItemWidth(100);
 		ImGui.Columns(2, "boolInlayOptions", false);
 
-		if (ImGui.Checkbox("Disabled", ref overlayConfig.Disabled))
+		if (ImGui.Checkbox("Disabled".Loc() + "###Disabled", ref overlayConfig.Disabled))
 		{
 			if (overlayConfig.Disabled)
 				OverlayRemoved?.Invoke(this, overlayConfig);
@@ -434,23 +439,23 @@ internal class Settings : IDisposable
 			dirty = true;
 		}
 
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Disables the overlay. Contrary to just hiding it this setting will stop it from ever being created."); }
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Disables the overlay. Contrary to just hiding it this setting will stop it from ever being created.".Loc()); }
 
 		ImGui.NextColumn();
 		ImGui.NextColumn();
 
 
-		if (ImGui.Checkbox("Muted", ref overlayConfig.Muted))
+		if (ImGui.Checkbox("Muted".Loc() + "###Muted", ref overlayConfig.Muted))
 		{
 			UpdateMuteOverlay(overlayConfig);
 			dirty = true;
 		}
 
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Enables or disables audio playback."); }
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Enables or disables audio playback.".Loc()); }
 
 		ImGui.NextColumn();
 
-		if (ImGui.Checkbox("ACT/IINACT optimizations", ref overlayConfig.ActOptimizations))
+		if (ImGui.Checkbox("ACT/IINACT optimizations".Loc() + "###ACT/IINACT optimizations", ref overlayConfig.ActOptimizations))
 		{
 			if (!overlayConfig.Disabled)
 			{
@@ -470,7 +475,7 @@ internal class Settings : IDisposable
 			dirty = true;
 		}
 
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Enables ACT/IINACT specific optimizations. This will automatically disable the overlay if ACT/IINACT is not running.\n\nNOTE: This does NOT disable the overlay if the websocket is not reporting data."); }
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Enables ACT/IINACT specific optimizations. This will automatically disable the overlay if ACT/IINACT is not running.\n\nNOTE: This does NOT disable the overlay if the websocket is not reporting data.".Loc()); }
 
 		ImGui.NextColumn();
 
@@ -478,61 +483,61 @@ internal class Settings : IDisposable
 
 		bool true_ = true;
 		bool implicit_ = overlayConfig.ClickThrough || overlayConfig.Fullscreen;
-		dirty |= ImGui.Checkbox("Locked", ref implicit_ ? ref true_ : ref overlayConfig.Locked);
+		dirty |= ImGui.Checkbox("Locked".Loc() + "###Locked", ref implicit_ ? ref true_ : ref overlayConfig.Locked);
 		if (overlayConfig.ClickThrough) { ImGui.PopStyleVar(); }
 
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Prevent the overlay from being resized or moved. This is implicitly set by Click Through and Fullscreen."); }
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Prevent the overlay from being resized or moved. This is implicitly set by Click Through and Fullscreen.".Loc()); }
 
 		ImGui.NextColumn();
 
-		dirty |= ImGui.Checkbox("Hidden", ref overlayConfig.Hidden);
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Hide the overlay. This does not stop the overlay from executing, only from being displayed."); }
+		dirty |= ImGui.Checkbox("Hidden".Loc() + "###Hidden", ref overlayConfig.Hidden);
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Hide the overlay. This does not stop the overlay from executing, only from being displayed.".Loc()); }
 
 		ImGui.NextColumn();
 
 		if (overlayConfig.ClickThrough) { ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f); }
 
-		dirty |= ImGui.Checkbox("Type Through", ref overlayConfig.ClickThrough ? ref true_ : ref overlayConfig.TypeThrough);
+		dirty |= ImGui.Checkbox("Type Through".Loc() + "###Type Through", ref overlayConfig.ClickThrough ? ref true_ : ref overlayConfig.TypeThrough);
 		if (overlayConfig.ClickThrough || overlayConfig.Fullscreen) { ImGui.PopStyleVar(); }
 
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Prevent the overlay from intercepting any keyboard events. Implicitly set by Click Through."); }
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Prevent the overlay from intercepting any keyboard events. Implicitly set by Click Through.".Loc()); }
 
 		ImGui.NextColumn();
 
-		dirty |= ImGui.Checkbox("Click Through", ref overlayConfig.ClickThrough);
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Prevent the overlay from intercepting any mouse events. Implicitly sets Locked and Type Through."); }
+		dirty |= ImGui.Checkbox("Click Through".Loc() + "###Click Through", ref overlayConfig.ClickThrough);
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Prevent the overlay from intercepting any mouse events. Implicitly sets Locked and Type Through.".Loc()); }
 
 		ImGui.NextColumn();
 
-		dirty |= ImGui.Checkbox("Hide out of combat", ref overlayConfig.HideOutOfCombat);
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Hide this overlay when out-of-combat."); }
+		dirty |= ImGui.Checkbox("Hide out of combat".Loc() + "###Hide out of combat", ref overlayConfig.HideOutOfCombat);
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Hide this overlay when out-of-combat.".Loc()); }
 
 		ImGui.NextColumn();
 
-		dirty |= ImGui.Checkbox("Hide in PvP", ref overlayConfig.HideInPvP);
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Hide this overlay when in a PvP area."); }
+		dirty |= ImGui.Checkbox("Hide in PvP".Loc() + "###Hide in PvP", ref overlayConfig.HideInPvP);
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Hide this overlay when in a PvP area.".Loc()); }
 
 		ImGui.NextColumn();
 
 		if (!overlayConfig.HideOutOfCombat) { ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f); }
 
-		dirty |= ImGui.InputInt("Hide Delay", ref overlayConfig.HideDelay);
-		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Delay to hide overlay when out-of-combat in seconds."); }
+		dirty |= ImGui.InputInt("Hide Delay".Loc() + "###Hide Delay", ref overlayConfig.HideDelay);
+		if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Delay to hide overlay when out-of-combat in seconds.".Loc()); }
 
 		if (!overlayConfig.HideOutOfCombat) { ImGui.PopStyleVar(); }
 
 		ImGui.Columns(1);
 
 		ImGui.NewLine();
-		if (ImGui.CollapsingHeader("Experimental / Unsupported"))
+		if (ImGui.CollapsingHeader("Experimental / Unsupported".Loc() + "###Experimental / Unsupported"))
 		{
 			ImGui.NewLine();
-			dirty |= ImGui.Checkbox("Fullscreen", ref overlayConfig.Fullscreen);
+			dirty |= ImGui.Checkbox("Fullscreen".Loc() + "###Fullscreen", ref overlayConfig.Fullscreen);
 			ImGui.NewLine();
-			if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Automatically makes this overlay cover the entire screen when enabled."); }
+			if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Automatically makes this overlay cover the entire screen when enabled.".Loc()); }
 
-			ImGui.Text("Custom CSS code:");
-			if (ImGui.InputTextMultiline("Custom CSS code", ref overlayConfig.CustomCss, 1000000,
+			ImGui.Text("Custom CSS code:".Loc());
+			if (ImGui.InputTextMultiline("Custom CSS code".Loc() + "###Custom CSS code", ref overlayConfig.CustomCss, 1000000,
 				    new Vector2(-1, ImGui.GetTextLineHeight() * 10)))
 			{
 				dirty = true;
@@ -542,10 +547,10 @@ internal class Settings : IDisposable
 		}
 
 		ImGui.NewLine();
-		if (ImGui.Button("Reload")) { ReloadOverlay(overlayConfig); }
+		if (ImGui.Button("Reload".Loc() + "###Reload")) { ReloadOverlay(overlayConfig); }
 
 		ImGui.SameLine();
-		if (ImGui.Button("Open Dev Tools")) { DebugOverlay(overlayConfig); }
+		if (ImGui.Button("Open Dev Tools".Loc() + "###Open Dev Tools")) { DebugOverlay(overlayConfig); }
 
 		ImGui.PopID();
 

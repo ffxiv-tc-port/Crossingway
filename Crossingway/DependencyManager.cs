@@ -210,7 +210,7 @@ public class DependencyManager : IDisposable
 
 		ImGui.SetNextWindowSize(new Vector2(1300, 350), ImGuiCond.Always);
 		ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize;
-		ImGui.Begin("Crossingway dependencies", windowFlags);
+		ImGui.Begin("Crossingway dependencies".Loc() + "###Crossingway dependencies", windowFlags);
 		if (_texIcon is not null)
 			ImGui.Image(_texIcon.GetWrapOrEmpty().Handle, new Vector2(256, 256));
 
@@ -218,9 +218,10 @@ public class DependencyManager : IDisposable
 
 		string version = _missingDependencies?.First()?.Version ?? "???";
 		string checksum = _missingDependencies?.First()?.Checksum ?? "???";
-		ImGui.Text("Crossingway requires additional dependencies to function.\n" +
-		           "These are not shipped with the plugin due to their size.\n\n" +
-		           "The files are hosted on GitHub and are verified with SHA256 checksums:\n" +
+		// The URL and the CefSharp/SHA256 labels stay verbatim - only the prose is localized.
+		ImGui.Text(("Crossingway requires additional dependencies to function.\n" +
+		            "These are not shipped with the plugin due to their size.\n\n" +
+		            "The files are hosted on GitHub and are verified with SHA256 checksums:\n").Loc() +
 		           "https://github.com/Styr1x/Browsingway/releases/tag/cef-binaries\n\n" +
 		           "CefSharp: " + version + "\n" +
 		           "SHA256: " + checksum
@@ -251,32 +252,32 @@ public class DependencyManager : IDisposable
 		if (_missingDependencies == null) { return; }
 
 		ImGui.Separator();
-		if (ImGui.Button("Install missing dependencies")) { InstallDependencies(); }
+		if (ImGui.Button("Install missing dependencies".Loc() + "###Install missing dependencies")) { InstallDependencies(); }
 	}
 
 	private void RenderInstalling()
 	{
-		ImGui.Text("Installing dependencies: ");
+		ImGui.Text("Installing dependencies: ".Loc());
 		ImGui.SameLine();
 		RenderDownloadProgress();
 	}
 
 	private void RenderComplete()
 	{
-		ImGui.Text("Installing dependencies: ");
+		ImGui.Text("Installing dependencies: ".Loc());
 		ImGui.SameLine();
 		RenderDownloadProgress();
 		ImGui.SameLine();
-		if (ImGui.Button("Close", new Vector2(100, 0))) { CheckDependencies(); }
+		if (ImGui.Button("Close".Loc() + "###Close", new Vector2(100, 0))) { CheckDependencies(); }
 	}
 
 	private void RenderFailed()
 	{
-		ImGui.Text("Installing dependencies: ");
+		ImGui.Text("Installing dependencies: ".Loc());
 		ImGui.SameLine();
 		RenderDownloadProgress();
 		ImGui.SameLine();
-		if (ImGui.Button("Retry", new Vector2(100, 0))) { CheckDependencies(); }
+		if (ImGui.Button("Retry".Loc() + "###Retry", new Vector2(100, 0))) { CheckDependencies(); }
 	}
 
 	private void RenderDownloadProgress()
@@ -288,19 +289,19 @@ public class DependencyManager : IDisposable
 			if (progress.Value == _depExtracting)
 			{
 				ImGui.PushStyleColor(ImGuiCol.PlotHistogram, _colorProgress);
-				ImGui.ProgressBar(1, progressSize, "Extracting");
+				ImGui.ProgressBar(1, progressSize, "Extracting".Loc());
 				ImGui.PopStyleColor();
 			}
 			else if (progress.Value == _depComplete)
 			{
 				ImGui.PushStyleColor(ImGuiCol.PlotHistogram, _colorDone);
-				ImGui.ProgressBar(1, progressSize, "Complete");
+				ImGui.ProgressBar(1, progressSize, "Complete".Loc());
 				ImGui.PopStyleColor();
 			}
 			else if (progress.Value == _depFailed)
 			{
 				ImGui.PushStyleColor(ImGuiCol.PlotHistogram, _colorError);
-				ImGui.ProgressBar(1, progressSize, "Error");
+				ImGui.ProgressBar(1, progressSize, "Error".Loc());
 				ImGui.PopStyleColor();
 			}
 			else
