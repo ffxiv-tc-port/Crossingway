@@ -1,5 +1,5 @@
 using Crossingway.Common;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System.Numerics;
 using TerraFX.Interop.DirectX;
 using TerraFX.Interop.Windows;
@@ -148,6 +148,6 @@ internal unsafe class SharedTextureHandler : IDisposable
 			ctx->Release();
 		}
 
-		ImGui.Image(_textureId, _size);
+		ImGui.Image(new ImTextureID(_textureId), _size);
 	}
 }

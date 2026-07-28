@@ -1,92 +1,49 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
-
+  workflow_dispatch:
+permissions:
+  contents: write
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+  build:
+    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
         with:
-          submodules: recursive
-          # Fetch full history so we can push repo.json back to main
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Download Dalamud
+          dotnet-version: 9.x
+      - name: Download Dalamud (pinned TC-compatible build)
+        shell: pwsh
         run: |
-          mkdir -p $HOME/.xlcore/dalamud/Hooks/dev
-          DALAMUD_URL=$(curl -s https://api.github.com/repos/PlusoneChiang/Dalamud/releases/latest \
-            | jq -r '.assets[0].browser_download_url')
-          echo "Downloading Dalamud from: $DALAMUD_URL"
-          wget "$DALAMUD_URL" -O /tmp/dalamud.zip
-          unzip -o /tmp/dalamud.zip -d $HOME/.xlcore/dalamud/Hooks/dev
-
-      - name: Extract version from tag
-        id: version
+          Invoke-WebRequest -Uri https://github.com/ffxiv-tc-port/DalamudPluginsTC/releases/download/dalamud-pin-v13.0.0.6/dalamud-api13-net9.zip -OutFile dalamud-pinned.zip
+          Expand-Archive -Force dalamud-pinned.zip "$env:AppData\FFXIVSimpleLauncher\Dalamud\Injector\"
+          Expand-Archive -Force dalamud-pinned.zip "$env:AppData\xivlauncher\Addon\Hooks\dev\"
+      - name: Compute version
+        shell: pwsh
         run: |
-          # tag = v1.0.0.0 → version = 1.0.0.0
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          # DalamudPackager uses 3-component version (drops 4th component)
-          SHORT=$(echo "$VERSION" | cut -d. -f1-3)
-          echo "short=$SHORT" >> $GITHUB_OUTPUT
-
-      - name: Restore
-        run: dotnet restore Crossingway.sln
-
-      - name: Build Release
-        run: dotnet build -c Release -p:Platform=x64 Crossingway.sln
-
-      - name: Locate and rename zip
-        id: zip
+          $ver = "${{ github.ref_name }}" -replace '^v'
+          "VER=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Build with dotnet
+        run: dotnet build --configuration Release -p:Platform=x64 Crossingway.sln -p:DalamudLibPath="$env:AppData\FFXIVSimpleLauncher\Dalamud\Injector\" -p:Version=${{ env.VER }} -p:AssemblyVersion=${{ env.VER }} -p:FileVersion=${{ env.VER }}
+      - name: write version into manifest
+        shell: pwsh
         run: |
-          # DalamudPackager outputs to out/Crossingway/latest.zip
-          SRC="out/Crossingway/latest.zip"
-          echo "Found: $SRC"
-          cp "$SRC" out/Crossingway.zip
-          echo "path=out/Crossingway.zip" >> $GITHUB_OUTPUT
-
-      - name: Update repo.json
+          $path = './out/Crossingway/Crossingway.json'
+          $json = Get-Content -Raw $path | ConvertFrom-Json
+          $json.AssemblyVersion = "${{ env.VER }}"
+          $json | ConvertTo-Json | Set-Content -Path $path
+      - name: Rename artifact to Crossingway.zip
+        shell: pwsh
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/Crossingway.zip"
-          jq \
-            --arg v "$VERSION" \
-            --arg url "$URL" \
-            '.[0].AssemblyVersion = $v |
-             .[0].TestingAssemblyVersion = $v |
-             .[0].DownloadLinkInstall = $url |
-             .[0].DownloadLinkTesting = $url |
-             .[0].DownloadLinkUpdate = $url' \
-            repo.json > repo.json.tmp && mv repo.json.tmp repo.json
-
-      - name: Commit updated repo.json
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add repo.json
-          git diff --cached --quiet && echo "repo.json unchanged" && exit 0
-          git commit -m "chore: update repo.json for ${{ steps.version.outputs.tag }} [skip ci]"
-          git push origin HEAD:main
-
-      - name: Create GitHub Release
+          Copy-Item "./out/Crossingway/latest.zip" -Destination "Crossingway.zip"
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          files: ${{ steps.zip.outputs.path }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            Crossingway.zip
+            out/Crossingway/Crossingway.json
           generate_release_notes: true

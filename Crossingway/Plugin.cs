@@ -4,7 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
