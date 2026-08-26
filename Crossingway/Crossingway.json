@@ -1,9 +1,10 @@
-﻿{
+{
     "Name": "Crossingway",
-    "Author": "XIVTheCalamity",
-    "Punchline": "Browser overlays rendered in-game.",
-    "Description": "Renders browser overlays in-game for FFXIV Traditional Chinese server (API 12 / .NET 9).\nUse the settings button below or the '/cw config' command to configure.\nFork of Browsingway by Styr1x.",
-    "RepoUrl": "https://github.com/PlusoneChiang/Crossingway",
+    "Author": "Styr1x, PlusoneChiang",
+    "Punchline": "在遊戲內渲染瀏覽器覆蓋層。",
+    "Description": "在遊戲內渲染 Chromium 瀏覽器覆蓋層,可顯示 IINACT/ACT 戰鬥數據網頁介面、Cactbot 時間軸、YouTube、任意網頁等。\n使用設定按鈕或輸入 /cw config 開啟設定。\nFork 自 Styr1x/Browsingway(繁體中文版客戶端,API 13 / .NET 9)。",
+    "RepoUrl": "https://github.com/ffxiv-tc-port/Crossingway",
+    "IconUrl": "https://raw.githubusercontent.com/ffxiv-tc-port/DalamudPluginsTC/main/icons/Crossingway.png",
     "Tags": [
         "framework",
         "browser",
@@ -14,6 +15,5 @@
         "youtube",
         "website",
         "video"
-    ],
-    "Changelog": "- Fix buffer overflow on window resize\n- Fix crash on dropdown/popup interaction (shared memory mode)\n- Fix double DPI scaling of popup position\n- Add popup overlay for external links\n- Fix IINACT EndCombat NullReferenceException\n- Shared memory IPC fallback for DXMT (macOS/Wine)\n"
+    ]
 }

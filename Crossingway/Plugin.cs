@@ -4,7 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
@@ -35,6 +35,8 @@ public class Plugin : IDalamudPlugin
 		{
 			throw new Exception("Could not determine plugin directory");
 		}
+
+		Localization.Init(_pluginDir);
 
 		_pluginConfigDir = pluginInterface.GetPluginConfigDirectory();
 
@@ -182,7 +184,7 @@ public class Plugin : IDalamudPlugin
 
 		// Hook up the main BW command
 		Services.CommandManager.AddHandler(_command,
-			new CommandInfo(HandleCommand) {HelpMessage = "Control Crossingway from the chat line! Type '/cw config' or open the settings for more info.", ShowInHelp = true});
+			new CommandInfo(HandleCommand) {HelpMessage = "Control Crossingway from the chat line! Type '/cw config' or open the settings for more info.".Loc(), ShowInHelp = true});
 	}
 
 	private (bool, long) OnWndProc(WindowsMessage msg, ulong wParam, long lParam)
@@ -271,7 +273,7 @@ public class Plugin : IDalamudPlugin
 		if (args.Length == 0)
 		{
 			Services.Chat.PrintError(
-				"No subcommand specified. Valid subcommands are: config,overlay.");
+				"No subcommand specified. Valid subcommands are: config,overlay.".Loc());
 			return;
 		}
 
@@ -290,7 +292,7 @@ public class Plugin : IDalamudPlugin
 				break;
 			default:
 				Services.Chat.PrintError(
-					$"Unknown subcommand '{args[0]}'. Valid subcommands are: config,overlay,inlay.");
+					"Unknown subcommand '??'. Valid subcommands are: config,overlay,inlay.".Loc(args[0]));
 				break;
 		}
 	}

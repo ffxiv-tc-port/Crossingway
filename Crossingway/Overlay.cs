@@ -2,7 +2,7 @@ using Crossingway.Common.Ipc;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System.Numerics;
 
 namespace Crossingway;
@@ -192,7 +192,7 @@ internal class Overlay : IDisposable
 				float size = float.Min(_size.X - lineHeight * 3, _size.Y - lineHeight * 3);
 				ImGui.NewLine();
 				ImGuiHelpers.CenterCursorFor(size);
-				ImGui.Image(_texErrorIcon.GetWrapOrEmpty().ImGuiHandle, new Vector2(size, size));
+				ImGui.Image(_texErrorIcon.GetWrapOrEmpty().Handle, new Vector2(size, size));
 
 				ImGui.PushStyleColor(ImGuiCol.Text, 0xFF0000FF);
 				if (_textureRenderException is not null)
@@ -382,7 +382,7 @@ internal class Overlay : IDisposable
 
 	#region serde
 
-	private MouseButton EncodeMouseButtons(RangeAccessor<bool> buttons)
+	private MouseButton EncodeMouseButtons(Span<bool> buttons)
 	{
 		MouseButton result = MouseButton.None;
 		if (buttons[0]) { result |= MouseButton.Primary; }
@@ -414,22 +414,22 @@ internal class Overlay : IDisposable
 			case Cursor.NResize:
 			case Cursor.SResize:
 			case Cursor.NsResize:
-				return ImGuiMouseCursor.ResizeNS;
+				return ImGuiMouseCursor.ResizeNs;
 
 			case Cursor.EResize:
 			case Cursor.WResize:
 			case Cursor.EwResize:
-				return ImGuiMouseCursor.ResizeEW;
+				return ImGuiMouseCursor.ResizeEw;
 
 			case Cursor.NeResize:
 			case Cursor.SwResize:
 			case Cursor.NeswResize:
-				return ImGuiMouseCursor.ResizeNESW;
+				return ImGuiMouseCursor.ResizeNesw;
 
 			case Cursor.NwResize:
 			case Cursor.SeResize:
 			case Cursor.NwseResize:
-				return ImGuiMouseCursor.ResizeNWSE;
+				return ImGuiMouseCursor.ResizeNwse;
 		}
 
 		return ImGuiMouseCursor.Arrow;
@@ -442,18 +442,18 @@ internal class Overlay : IDisposable
 			return false;
 		}
 
-		if (Services.ClientState.LocalPlayer == null)
+		if (Services.ObjectTable.LocalPlayer == null)
 		{
 			return true;
 		}
 
-		if (Services.ClientState.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat))
+		if (Services.ObjectTable.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat))
 		{
 			_timeLastInCombat = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 			return false;
 		}
 
-		if (!Services.ClientState.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat) && _overlayConfig.HideDelay > 0)
+		if (!Services.ObjectTable.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat) && _overlayConfig.HideDelay > 0)
 		{
 			return DateTimeOffset.Now.ToUnixTimeMilliseconds() >= _timeLastInCombat + (_overlayConfig.HideDelay * 1000);
 		}
