@@ -1,56 +1,32 @@
-Crossingway
-===========
+# Crossingway
 
-Dalamud plugin for rendering browser overlays in-game.
+在遊戲畫面內渲染瀏覽器疊加層（overlay）的插件，讓你在全螢幕（含 G-SYNC）下仍能顯示 ACT 一類的網頁疊加層。
 
-Enables you to play in fullscreen (and G-SYNC) while having access to e.g. ACT overlays.
+本專案 fork 自 ackwell 的 BrowserHost 插件。
 
-This project is a fork off ackwell's BrowserHost plugin (https://github.com/ackwell/BrowserHost). The original scope of the project was to add Endwalker support and nothing more. However since then a few new features and improvements have been added:
+## 功能
 
-* DPI awareness
-    * The displayed browser overlays are scaled correctly in regards to your display's dpi. This essentially means you get the same sized output as you get from your browser.
-* Zoom support
-    * Overlays can be zoomed in and out to make them smaller and bigger, same way your browser's zoom works.
-* Opacity support
-    * Make your overlays as transparent as you like.
-* Framerate configurable
-    * The rendering framerate for each individual overlay can now be set.
-* Disable support
-    * Completly disable an overlay without deleting it.
-* Mute support
-   * Can mute specific overlays.
-* ACT optimizations
-   * Optimizes the overlay handling for ACT overlays. Also enables and disables them depending on if ACT itself is running.
-* Updated Chromium version
-    * 108.0.5359.125
-* Project cleanup
-    * Everything now uses .net 7
-    * Nullable enabled
-    * DalamudPackager for easier deployment
-    * Some source cleanups
-* Minor stability improvements
+- DPI 感知：疊加層依螢幕 DPI 正確縮放，顯示比例與瀏覽器一致
+- 縮放：可像瀏覽器一樣個別放大縮小每個疊加層
+- 透明度：可調整每個疊加層的不透明度
+- 影格率：可個別設定每個疊加層的渲染影格率
+- 停用：可完全停用某個疊加層而不用刪除它
+- 靜音：可個別靜音疊加層
+- ACT 最佳化：依 ACT 是否正在執行自動啟用／停用對應的疊加層
+- Linux 支援（實驗性，不提供官方支援）
 
+## ACT 疊加層設定
 
-### Future (Roadmap)
-The initial release focused on making the overlays work again, the focus now rests on rewriting core parts to make the plugin more robust and easier to maintain.
+需開啟 ACT 的 Overlay WSServer，並用 ACT 的 URL 產生器建立對應網址；也建議對個別疊加層開啟「ACT 最佳化」。
 
-You can also open an issue for new feature requests.
+## Linux 疑難排解
 
-## ACT support ##
-For ACT overlays to work correctly the overlay WSServer has to be enabled. ACT also provides an URL generator that will create the correct URLs to use within Crossingway:
+- 刪除 `~/.xlcore/pluginConfigs/Crossingway` 底下的內容可讓插件在下次啟動時重新安裝 CEF
+  （切換 Wine/Proton 版本後常需要這麼做）
+- Wine/Proton 版本變更時，可能需要在 XIVLauncher 設定的「Wine」分頁清除對應的 prefix
 
-![image](https://user-images.githubusercontent.com/569324/148692825-f29e41ae-cec5-4144-974f-394e14ec108a.png)
+## 安裝
 
-You might also want to enable 'ACT optimizations' inside Crossingway for the specifc overlays, this will also enable and disable them automatically if ACT is running or not running.
-
-## Linux Support ##
-
-Crossingway works in Linux, but is experimental and *not supported*.
-
-- Newer versions of Dalamud / XIVLauncher.Core include the necessary .NET dependencies, so you should not install your own into the Wine/Proton prefix - they can conflict and cause crashing issues.
-- If you encounter performance issues, try using a more recent version of Proton to run FFXIV. Proton-GE 10.27 works well, but others may also. 
-- You may need to use a custom fork of XIVLauncher in order to change Wine/Proton versions.
-
-### Troubleshooting
-- Delete the contents of `~/.xlcore/pluginConfigs/Crossingway`. This should cause the plugin to reinstall CEF on next launch. This is most likely to help if you've switched Wine/Proton versions since installing CEF (XIVLauncher may do this on its own as part of its own updates, though this is rare.)
-- If your Wine version has changed, you may need to clear your Wine or Proton prefix. This can be done from the `Wine` tab in XIVLauncher's settings.
+在 Dalamud 設定的「自訂插件庫」加入
+`https://raw.githubusercontent.com/ffxiv-tc-port/DalamudPluginsTC/main/repo.json`
+並啟用，再從插件列表安裝。
