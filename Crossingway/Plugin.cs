@@ -4,7 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
@@ -24,6 +24,7 @@ public class Plugin : IDalamudPlugin
 	private ActHandler _actHandler;
 	private Settings? _settings;
 	private Services _services;
+	private volatile bool _disposed;
 
 	public Plugin(IDalamudPluginInterface pluginInterface)
 	{
@@ -35,6 +36,8 @@ public class Plugin : IDalamudPlugin
 		{
 			throw new Exception("Could not determine plugin directory");
 		}
+
+		Localization.Init(_pluginDir);
 
 		_pluginConfigDir = pluginInterface.GetPluginConfigDirectory();
 
@@ -54,6 +57,8 @@ public class Plugin : IDalamudPlugin
 
 	public void Dispose()
 	{
+		_disposed = true;
+
 		foreach (Overlay overlay in _overlays.Values) { overlay.Dispose(); }
 
 		_overlays.Clear();
@@ -64,7 +69,7 @@ public class Plugin : IDalamudPlugin
 
 		Services.CommandManager.RemoveHandler(_command);
 
-		WndProcHandler.Shutdown();
+		ShutdownWndProcHook();
 		DxHandler.Shutdown();
 
 		_dependencyManager.Dispose();
@@ -76,7 +81,6 @@ public class Plugin : IDalamudPlugin
 		DxHandler.Initialise(Services.PluginInterface);
 
 		// Spin up WndProc hook
-		WndProcHandler.Initialise(DxHandler.WindowHandle);
 		WndProcHandler.WndProcMessage += OnWndProc;
 
 		// Boot the render process. This has to be done before initialising settings to prevent a
@@ -90,6 +94,11 @@ public class Plugin : IDalamudPlugin
 				Services.PluginLog.Information("D3D11 shared textures not supported; using shared memory IPC.");
 			}
 
+			// RPC callbacks arrive on the render process IPC thread; while unloading the
+			// dispatch below would run inline there instead of on the framework thread.
+			if (FrameworkUnloadGuard.ShouldSkip("hydrate overlays"))
+				return;
+
 			Services.Framework.RunOnFrameworkThread(() =>
 			{
 				if (_settings is not null)
@@ -100,6 +109,9 @@ public class Plugin : IDalamudPlugin
 		};
 		_renderProcess.Rpc.SetCursor += msg =>
 		{
+			if (FrameworkUnloadGuard.ShouldSkip("set cursor"))
+				return;
+
 			Services.Framework.RunOnFrameworkThread(() =>
 			{
 				Guid guid = new(msg.Guid.Span);
@@ -109,6 +121,9 @@ public class Plugin : IDalamudPlugin
 		};
 		_renderProcess.Rpc.UpdateTexture += msg =>
 		{
+			if (FrameworkUnloadGuard.ShouldSkip("update texture"))
+				return;
+
 			Services.Framework.RunOnFrameworkThread(() =>
 			{
 				Guid guid = new(msg.Guid.Span);
@@ -131,6 +146,9 @@ public class Plugin : IDalamudPlugin
 		};
 		_renderProcess.Rpc.OpenPopup += msg =>
 		{
+			if (FrameworkUnloadGuard.ShouldSkip("open popup"))
+				return;
+
 			Services.Framework.RunOnFrameworkThread(() =>
 			{
 				Guid parentGuid = new(msg.ParentGuid.Span);
@@ -154,6 +172,9 @@ public class Plugin : IDalamudPlugin
 
 				popupOverlay.PopupClosed += (_, _) =>
 				{
+					if (FrameworkUnloadGuard.ShouldSkip("close popup"))
+						return;
+
 					Services.Framework.RunOnFrameworkThread(() =>
 					{
 						if (_overlays.Remove(popupConfig.Guid, out var removed))
@@ -182,15 +203,58 @@ public class Plugin : IDalamudPlugin
 
 		// Hook up the main BW command
 		Services.CommandManager.AddHandler(_command,
-			new CommandInfo(HandleCommand) {HelpMessage = "Control Crossingway from the chat line! Type '/cw config' or open the settings for more info.", ShowInHelp = true});
+			new CommandInfo(HandleCommand) {HelpMessage = "Control Crossingway from the chat line! Type '/cw config' or open the settings for more info.".Loc(), ShowInHelp = true});
+
+		// Last, so a throw above (which can fail the plugin load without Dispose) never leaves a subclass behind.
+		InstallWndProcHook(DxHandler.WindowHandle);
+	}
+
+	private void InstallWndProcHook(IntPtr hWnd)
+	{
+		// Subclassing only works from the window's thread; the constructor runs on a pool thread.
+		if (FrameworkUnloadGuard.ShouldSkip("install window message hook"))
+			return;
+
+		Services.Framework.RunOnFrameworkThread(() =>
+		{
+			if (_disposed)
+				return;
+
+			WndProcHandler.Result result;
+			try { result = WndProcHandler.Install(hWnd); }
+			catch (Exception e)
+			{
+				Services.PluginLog.Information($"Window message hook not installed: {e.GetType().Name}: {e.Message}");
+				return;
+			}
+
+			Services.PluginLog.Information($"Window message hook install: {result} (thread {Environment.CurrentManagedThreadId}).");
+
+			if (_disposed)
+				ShutdownWndProcHook();
+		});
+	}
+
+	private static void ShutdownWndProcHook()
+	{
+		WndProcHandler.Result result = WndProcHandler.Shutdown();
+		if (result is not (WndProcHandler.Result.Ok or WndProcHandler.Result.NotInstalled))
+			Services.PluginLog.Information($"Window message hook removal: {result}; callback kept alive until the game exits.");
 	}
 
 	private (bool, long) OnWndProc(WindowsMessage msg, ulong wParam, long lParam)
 	{
 		// Notify all the overlays of the wndproc, respond with the first capturing response (if any)
 		// TODO: Yeah this ain't great but realistically only one will capture at any one time for now.
-		IEnumerable<(bool, long)> responses = _overlays.Select(pair => pair.Value.WndProcMessage(msg, wParam, lParam));
-		return responses.FirstOrDefault(pair => pair.Item1);
+		// Plain foreach over the struct enumerator: same order, same short-circuit and same
+		// version check as the former Select/FirstOrDefault, without per-message allocations.
+		foreach (KeyValuePair<Guid, Overlay> pair in _overlays)
+		{
+			(bool, long) response = pair.Value.WndProcMessage(msg, wParam, lParam);
+			if (response.Item1) { return response; }
+		}
+
+		return default;
 	}
 
 	private void OnActAvailabilityChanged(object? sender, bool e)
@@ -271,7 +335,7 @@ public class Plugin : IDalamudPlugin
 		if (args.Length == 0)
 		{
 			Services.Chat.PrintError(
-				"No subcommand specified. Valid subcommands are: config,overlay.");
+				"No subcommand specified. Valid subcommands are: config,overlay.".Loc());
 			return;
 		}
 
@@ -290,7 +354,7 @@ public class Plugin : IDalamudPlugin
 				break;
 			default:
 				Services.Chat.PrintError(
-					$"Unknown subcommand '{args[0]}'. Valid subcommands are: config,overlay,inlay.");
+					"Unknown subcommand '??'. Valid subcommands are: config,overlay,inlay.".Loc(args[0]));
 				break;
 		}
 	}

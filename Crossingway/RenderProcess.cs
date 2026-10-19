@@ -215,10 +215,29 @@ internal class RenderProcess : IDisposable
 			RedirectStandardError = true
 		};
 
-		process.OutputDataReceived += (_, args) => Services.PluginLog.Info($"[Render]: {args.Data}");
-		process.ErrorDataReceived += (_, args) => Services.PluginLog.Error($"[Render]: {args.Data}");
+		// Data is null when the stream closes (EOF); that is not an output line.
+		process.OutputDataReceived += (_, args) =>
+		{
+			if (!string.IsNullOrWhiteSpace(args.Data))
+				Services.PluginLog.Info($"[Render]: {args.Data}");
+		};
+		process.ErrorDataReceived += (_, args) => LogRendererStderr(args.Data);
 
 		return process;
+	}
+
+	// The renderer prints this admin notice to stderr on every start when the game runs elevated
+	// (CefHandler.Initialise): a known state, not an error, so keep this substring in sync with it.
+	// Everything else on stderr stays Error so a genuinely failing renderer is still visible.
+	private static void LogRendererStderr(string? line)
+	{
+		if (string.IsNullOrWhiteSpace(line))
+			return;
+
+		if (line.Contains("running as a privileged process", StringComparison.Ordinal))
+			Services.PluginLog.Info($"[Render]: {line}");
+		else
+			Services.PluginLog.Error($"[Render]: {line}");
 	}
 
 	private void OnProcessCrashed()

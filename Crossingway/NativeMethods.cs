@@ -44,4 +44,28 @@ internal class NativeMethods
 
 	[DllImport("user32.dll")]
 	private static extern short GetKeyState(int nVirtKey);
+
+	public delegate long SubclassProc(IntPtr hWnd, uint msg, ulong wParam, long lParam, nuint idSubclass, nuint refData);
+
+	public static bool IsWindowOwnedByCurrentThread(IntPtr hWnd)
+	{
+		return GetWindowThreadProcessId(hWnd, out _) == GetCurrentThreadId();
+	}
+
+	[DllImport("comctl32.dll", ExactSpelling = true)]
+	[return: MarshalAs(UnmanagedType.Bool)]
+	public static extern bool SetWindowSubclass(IntPtr hWnd, IntPtr pfnSubclass, nuint idSubclass, nuint refData);
+
+	[DllImport("comctl32.dll", ExactSpelling = true)]
+	[return: MarshalAs(UnmanagedType.Bool)]
+	public static extern bool RemoveWindowSubclass(IntPtr hWnd, IntPtr pfnSubclass, nuint idSubclass);
+
+	[DllImport("comctl32.dll", ExactSpelling = true)]
+	public static extern long DefSubclassProc(IntPtr hWnd, uint msg, ulong wParam, long lParam);
+
+	[DllImport("user32.dll")]
+	private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+	[DllImport("kernel32.dll")]
+	private static extern uint GetCurrentThreadId();
 }

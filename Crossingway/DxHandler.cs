@@ -1,5 +1,4 @@
 using Dalamud.Plugin;
-using SharpDX.Direct3D11;
 using TerraFX.Interop.DirectX;
 using TerraFX.Interop.Windows;
 
@@ -14,7 +13,7 @@ internal static class DxHandler
 
 	public static unsafe void Initialise(IDalamudPluginInterface pluginInterface)
 	{
-		_device = (ID3D11Device*)(IntPtr)pluginInterface.UiBuilder.Device.NativePointer;
+		_device = (ID3D11Device*)pluginInterface.UiBuilder.DeviceHandle;
 
 		// Grab the window handle, we'll use this for setting up our wndproc hook
 		WindowHandle = pluginInterface.UiBuilder.WindowHandlePtr;
