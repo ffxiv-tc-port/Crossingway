@@ -25,7 +25,15 @@ internal class Settings : IDisposable
 #endif
 
 	private InlayConfiguration? _selectedOverlay;
-	private Timer? _saveDebounceTimer;
+
+	// Saving happens only on the framework thread (Render, chat commands, Dispose), the same thread
+	// that mutates Config.Inlays, so serialization never races a list edit. No thread-pool timer:
+	// an exception escaping one would end the game process.
+	private const long SaveDebounceMs = 1000;
+	private const long SaveRetryMs = 5000;
+	private long _saveDueAt; // Environment.TickCount64 deadline; 0 = nothing pending.
+	private bool _disposed;
+	private int _saveFailureLogged;
 
 	public Settings()
 	{
@@ -33,7 +41,15 @@ internal class Settings : IDisposable
 		Config = Services.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 	}
 
-	public void Dispose() { }
+	public void Dispose()
+	{
+		if (_disposed) { return; }
+
+		// An edit still inside its debounce window is written now instead of being lost; nothing saves after this.
+		if (_saveDueAt != 0) { SaveSettings(); }
+
+		_disposed = true;
+	}
 
 	public void OnActAvailabilityChanged(bool available)
 	{
@@ -206,15 +222,33 @@ internal class Settings : IDisposable
 
 	private void DebouncedSaveSettings()
 	{
-		_saveDebounceTimer?.Dispose();
-		_saveDebounceTimer = new Timer(_ => SaveSettings(), null, 1000, Timeout.Infinite);
+		_saveDueAt = Environment.TickCount64 + SaveDebounceMs;
+	}
+
+	private void SaveIfDue()
+	{
+		if (_disposed || _saveDueAt == 0 || Environment.TickCount64 < _saveDueAt) { return; }
+
+		SaveSettings();
 	}
 
 	private void SaveSettings()
 	{
-		_saveDebounceTimer?.Dispose();
-		_saveDebounceTimer = null;
-		Services.PluginInterface.SavePluginConfig(Config);
+		if (_disposed) { return; }
+
+		_saveDueAt = 0;
+		try
+		{
+			Services.PluginInterface.SavePluginConfig(Config);
+		}
+		catch (Exception ex)
+		{
+			// Usually transient (file held open by a reader, antivirus): keep the edit pending and retry.
+			_saveDueAt = Environment.TickCount64 + SaveRetryMs;
+			// Type only: IO exception messages carry the config file's full local path.
+			if (Interlocked.Exchange(ref _saveFailureLogged, 1) == 0)
+				Services.PluginLog.Warning($"Saving settings failed ({ex.GetType().Name}); will retry, later failures are not logged.");
+		}
 	}
 
 	private string GetOverlayCommandName(InlayConfiguration overlayConfig)
@@ -224,6 +258,8 @@ internal class Settings : IDisposable
 
 	public void Render()
 	{
+		SaveIfDue();
+
 		if (!_open) { return; }
 
 		// Primary window container
