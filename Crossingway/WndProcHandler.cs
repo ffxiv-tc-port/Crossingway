@@ -31,6 +31,7 @@ internal static class WndProcHandler
 	private static IntPtr _hWnd;
 	private static bool _installed;
 	private static volatile bool _detached;
+	private static int _callbackFailureLogged;
 
 	public static event WndProcMessageDelegate? WndProcMessage;
 
@@ -98,27 +99,46 @@ internal static class WndProcHandler
 
 	private static long SubclassDetour(IntPtr hWnd, uint msg, ulong wParam, long lParam, nuint idSubclass, nuint refData)
 	{
+		// Contract: no managed exception may leave this method (it would unwind through the game's native
+		// message loop and end the process). A failing handler only loses that one message; it still goes on
+		// down the chain via DefSubclassProc, which is called exactly once per message.
 		// Ignore things not targeting the current window handle
 		if (!_detached && hWnd == _hWnd)
 		{
-			(bool, long)? resp = WndProcMessage?.Invoke((WindowsMessage)msg, wParam, lParam);
-
-			// Item1 is a bool, where true == capture event. If false, we're falling through default handling.
-			if (resp is { Item1: true })
+			try
 			{
-				return resp.Value.Item2;
+				(bool, long)? resp = WndProcMessage?.Invoke((WindowsMessage)msg, wParam, lParam);
+
+				// Item1 is a bool, where true == capture event. If false, we're falling through default handling.
+				if (resp is { Item1: true })
+				{
+					return resp.Value.Item2;
+				}
 			}
+			catch (Exception e) { ReportCallbackFailure(e); }
 		}
 
 		long result = NativeMethods.DefSubclassProc(hWnd, msg, wParam, lParam);
 
 		// Documented requirement: a subclass must be gone before the window is destroyed.
-		if (msg == _wmNcDestroy && _installed && hWnd == _hWnd
-		    && NativeMethods.RemoveWindowSubclass(hWnd, _subclassProcPtr, _subclassId))
+		if (msg == _wmNcDestroy && _installed && hWnd == _hWnd)
 		{
-			_installed = false;
+			try
+			{
+				if (NativeMethods.RemoveWindowSubclass(hWnd, _subclassProcPtr, _subclassId)) { _installed = false; }
+			}
+			catch (Exception e) { ReportCallbackFailure(e); }
 		}
 
 		return result;
+	}
+
+	private static void ReportCallbackFailure(Exception e)
+	{
+		if (Interlocked.Exchange(ref _callbackFailureLogged, 1) != 0) { return; }
+
+		// Logging must not throw out of the window procedure either.
+		try { Services.PluginLog.Error(e, "Window message handler failed; this and later failing messages fall through to the game (logged once)."); }
+		catch { }
 	}
 }
