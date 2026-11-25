@@ -28,14 +28,28 @@ Crossingway 本身 fork 自 [Browsingway](https://github.com/Styr1x/Browsingway)
 
 ## ACT 疊加層設定
 
-需開啟 ACT 的 Overlay WSServer，並用 ACT 的 URL 產生器建立對應網址；也建議對個別疊加層開啟「ACT 最佳化」。
+需開啟 ACT 的 Overlay WSServer，並用 ACT 的 URL 產生器建立對應網址；也建議對個別疊加層開啟「ACT 最佳化」。改用 IINACT 時，網址從 IINACT 主視窗產生。
 
 ## 台服版的修改
 
 - 介面繁體中文化（設定視窗與第一次啟用時的相依套件下載流程）。
 - 修正更新或停用 Crossingway 之後過幾分鐘遊戲崩潰的問題。
+- 修正疊加網頁處理鍵盤輸入出錯、或設定存檔失敗時，可能讓整個遊戲直接結束的問題；卸載之後也不會再寫設定檔。
 - 修正關閉遊戲時的執行緒問題；以系統管理員身分執行遊戲的提示不再記成錯誤。
 - 降低記憶體用量。
+
+## 安裝
+
+1. 在遊戲內輸入 `/xlsettings` 開啟「Dalamud 設定」，到「試驗性功能」分頁的「第三方插件倉庫」加入
+   `https://raw.githubusercontent.com/ffxiv-tc-port/DalamudPluginsTC/main/repo.json`
+   並啟用、儲存。
+2. 輸入 `/xlplugins` 開啟「插件管理員」，搜尋「Crossingway」安裝。
+
+同一個插件只裝這裡的版本，不要同時裝上游版。
+
+## 需要搭配的插件
+
+- 選用：[IINACT](https://github.com/ffxiv-tc-port/IINACT)（不必另外開 ACT 就能提供戰鬥數據給疊加層）
 
 ## Linux 疑難排解
 
@@ -43,10 +57,6 @@ Crossingway 本身 fork 自 [Browsingway](https://github.com/Styr1x/Browsingway)
   （切換 Wine/Proton 版本後常需要這麼做）
 - Wine/Proton 版本變更時，可能需要在 XIVLauncher 設定的「Wine」分頁清除對應的 prefix
 
-## 安裝
-
-在 Dalamud 設定的「自訂插件庫」加入
-`https://raw.githubusercontent.com/ffxiv-tc-port/DalamudPluginsTC/main/repo.json`
-並啟用，再從插件列表安裝。
-
 原作者：[PlusoneChiang](https://github.com/PlusoneChiang)（Crossingway）、[Styr1x](https://github.com/Styr1x)（Browsingway）
+
+授權：GPL-3.0（見 LICENSE）
