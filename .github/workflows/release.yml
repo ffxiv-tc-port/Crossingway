@@ -41,6 +41,28 @@ jobs:
           $json = Get-Content -Raw $path | ConvertFrom-Json
           $json.AssemblyVersion = "${{ env.VER }}"
           $json | ConvertTo-Json | Set-Content -Path $path
+      - name: write versioned manifest into latest.zip
+        shell: pwsh
+        run: |
+          # DalamudPackager 在 dotnet build 裡就打好 latest.zip（只帶三段版號），上一步改的 manifest 要再換進包裡。
+          $ErrorActionPreference = 'Stop'
+          $dir = './out/Crossingway'
+          $zipPath = (Resolve-Path -LiteralPath "$dir/latest.zip").Path
+          $jsonPath = (Resolve-Path -LiteralPath "$dir/Crossingway.json").Path
+          $zip = [System.IO.Compression.ZipFile]::Open($zipPath, 'Update')
+          try {
+            $entry = $zip.GetEntry('Crossingway.json')
+            if (-not $entry) { throw "Crossingway.json not found in $zipPath" }
+            $entry.Delete()
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $jsonPath, 'Crossingway.json')
+          } finally { $zip.Dispose() }
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+          try {
+            $reader = [System.IO.StreamReader]::new($zip.GetEntry('Crossingway.json').Open())
+            try { $packed = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+          } finally { $zip.Dispose() }
+          if ($packed.AssemblyVersion -ne "${{ env.VER }}") { throw "latest.zip manifest AssemblyVersion=$($packed.AssemblyVersion), expected ${{ env.VER }}" }
+          Write-Host "latest.zip manifest AssemblyVersion=$($packed.AssemblyVersion)"
       - name: Rename artifact to Crossingway.zip
         shell: pwsh
         run: |
